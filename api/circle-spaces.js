@@ -2,7 +2,17 @@ export default async function handler(req, res) {
   const token = process.env.CIRCLE_API_TOKEN;
   const communityId = "527745";
 
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
   try {
+    const group = req.query.group;
+
+    if (!group) {
+      return res.status(400).json({
+        error: "Missing ?group= parameter"
+      });
+    }
+
     const response = await fetch(
       `https://app.circle.so/api/v1/spaces?community_id=${communityId}&per_page=100`,
       {
@@ -19,7 +29,7 @@ export default async function handler(req, res) {
     const spaces = await response.json();
 
     const filtered = spaces
-      .filter(space => space.space_group_name === "ACE")
+      .filter(space => space.space_group_name === group)
       .map(space => ({
         id: space.id,
         name: space.name,
@@ -30,14 +40,9 @@ export default async function handler(req, res) {
         private: space.is_private
       }));
 
-    // Fine for this temporary prototype.
-    res.setHeader("Access-Control-Allow-Origin", "*");
-
     res.status(200).json(filtered);
 
   } catch (error) {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-
     res.status(500).json({
       error: error.message
     });
