@@ -30,14 +30,14 @@ export default async function handler(req, res) {
         private: space.is_private
       }));
 
-    res.setHeader(
-      "Access-Control-Allow-Origin",
-      "https://dtnetwork-org.circle.so"
-    );
+    // Fine for this temporary prototype.
+    res.setHeader("Access-Control-Allow-Origin", "*");
 
     res.status(200).json(filtered);
 
   } catch (error) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
     res.status(500).json({
       error: error.message
     });
