@@ -14,7 +14,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // 1. Get all Circle Space Groups
     const groupsResponse = await fetch(
       `https://app.circle.so/api/v1/space_groups?community_id=${communityId}`,
       {
@@ -32,7 +31,6 @@ export default async function handler(req, res) {
 
     const allGroups = await groupsResponse.json();
 
-    // 2. Keep only DTN groups we recognize from the slug convention
     const candidateGroups = allGroups
       .map(group => {
         let groupType = null;
@@ -53,7 +51,6 @@ export default async function handler(req, res) {
       .filter(Boolean)
       .filter(group => !type || group.groupType === type);
 
-    // 3. Check actual Space Group membership for each candidate
     const membershipChecks = await Promise.all(
       candidateGroups.map(async group => {
         const url =
@@ -68,12 +65,6 @@ export default async function handler(req, res) {
           }
         });
 
-        // If Circle says this member is not found in the group,
-        // treat that as "not a member" rather than failing everything.
-        if (response.status === 404) {
-          return null;
-        }
-
         if (!response.ok) {
           throw new Error(
             `Membership lookup for ${group.name} returned ${response.status}`
@@ -82,8 +73,15 @@ export default async function handler(req, res) {
 
         const membership = await response.json();
 
-        // If we got a valid membership object, keep the group.
-        if (!membership) return null;
+        // Non-member response:
+        // { success: false, message: "SpaceGroupMember record not found" }
+        if (membership.success === false) {
+          return null;
+        }
+
+        if (membership.status !== "active") {
+          return null;
+        }
 
         return {
           id: group.id,
@@ -94,9 +92,9 @@ export default async function handler(req, res) {
       })
     );
 
-    const memberGroups = membershipChecks.filter(Boolean);
-
-    res.status(200).json(memberGroups);
+    res.status(200).json(
+      membershipChecks.filter(Boolean)
+    );
 
   } catch (error) {
     console.error(error);
